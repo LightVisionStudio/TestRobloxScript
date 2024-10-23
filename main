@@ -4,47 +4,86 @@ screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
 
 -- Create a Frame
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 200, 0, 100)
-frame.Position = UDim2.new(0.5, -100, 0.5, -50) -- Center of the screen
+frame.Size = UDim2.new(0, 300, 0, 200)
+frame.Position = UDim2.new(0.5, -150, 0.5, -100) -- Center the frame
 frame.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
 frame.BorderSizePixel = 0
+frame.Visible = true -- Frame will be visible initially
 frame.Parent = screenGui
 
--- Variables for dragging
+-- Create a Close/Open Button
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 50, 0, 30)
+toggleButton.Position = UDim2.new(0, 5, 0, 5) -- Position at the top left of the frame
+toggleButton.Text = "Close"
+toggleButton.Parent = frame
+
+-- Function to toggle frame visibility
+toggleButton.MouseButton1Click:Connect(function()
+    if frame.Visible then
+        frame.Visible = false
+        toggleButton.Text = "Open"
+    else
+        frame.Visible = true
+        toggleButton.Text = "Close"
+    end
+end)
+
+-- Create FOV Slider
+local slider = Instance.new("TextButton")
+slider.Size = UDim2.new(0, 200, 0, 30)
+slider.Position = UDim2.new(0.5, -100, 0.6, -15) -- Position in the middle of the frame
+slider.Text = "FOV: " .. tostring(game.Workspace.CurrentCamera.FieldOfView)
+slider.Parent = frame
+
+-- Create Dragging Logic for Slider (for FOV)
 local dragging = false
+slider.MouseButton1Down:Connect(function()
+    dragging = true
+end)
+
+slider.MouseButton1Up:Connect(function()
+    dragging = false
+end)
+
+-- Adjust FOV based on slider position
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local mousePos = input.Position.X
+        local sliderPos = math.clamp(mousePos - slider.AbsolutePosition.X, 0, 200)
+        local fov = math.clamp(70 + (sliderPos / 200) * 70, 70, 120) -- FOV between 70 and 120
+        game.Workspace.CurrentCamera.FieldOfView = fov
+        slider.Text = "FOV: " .. tostring(math.floor(fov))
+    end
+end)
+
+-- Variables for dragging the whole frame
+local dragFrame = false
 local dragInput, mousePos, framePos
 
--- Function to update the frame position
-local function update(input)
-	local delta = input.Position - mousePos
-	frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
-end
-
--- Start dragging
 frame.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		mousePos = input.Position
-		framePos = frame.Position
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragFrame = true
+        mousePos = input.Position
+        framePos = frame.Position
 
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
-		end)
-	end
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragFrame = false
+            end
+        end)
+    end
 end)
 
--- Handle dragging movement
 frame.InputChanged:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		dragInput = input
-	end
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
 end)
 
--- Update frame position while dragging
 game:GetService("UserInputService").InputChanged:Connect(function(input)
-	if input == dragInput and dragging then
-		update(input)
-	end
+    if dragInput == input and dragFrame then
+        local delta = input.Position - mousePos
+        frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+    end
 end)
